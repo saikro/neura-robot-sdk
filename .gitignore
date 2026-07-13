@@ -61,6 +61,11 @@ compile_commands.json
 # vcpkg
 vcpkg_installed/
 
+# Generated protobuf / gRPC sources — regenerated at build time on both sides.
+*.pb.*
+*.grpc.pb.*
+*_pb2*.py
+
 # debug information files
 *.dwo
 
