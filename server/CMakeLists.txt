@@ -10,3 +10,5 @@ find_package(gRPC     CONFIG REQUIRED)
 
 add_subdirectory(src/proto)
 add_subdirectory(src/domain)
+add_subdirectory(src/service)
+add_subdirectory(src/app)
