@@ -44,7 +44,7 @@ Robotics setting: _<one line>_
 
 | RPC | Type | Purpose |
 |-----|------|---------|
-| `MoveTo` | unary | request/response command with ack |
+| `GetRobotInfo` | unary | identity + current state query |
 | `StreamTelemetry` | server-streaming | one-way: robot pushes state at N Hz |
 | `LiveControl` | bidirectional | client commands + robot state, independent streams |
 

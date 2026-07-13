@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package robot.v1;
+
+import "google/protobuf/timestamp.proto";
+
+enum RobotState {
+  ROBOT_STATE_UNSPECIFIED = 0;
+  ROBOT_STATE_IDLE        = 1;
+  ROBOT_STATE_WORKING     = 2;
+  ROBOT_STATE_ERROR       = 3;
+}
+
+message RobotInfo {
+  string serial_number  = 1;
+  string model          = 2;
+  // Present iff a user has assigned a name; absence != empty string.
+  optional string name  = 3;
+  RobotState state      = 4;
+}
+
+message GetRobotInfoRequest {}
+
+message GetRobotInfoResponse {
+  RobotInfo info = 1;
+}
+
+message StreamTelemetryRequest {
+  // Requested sampling rate; the server clamps to what it supports.
+  uint32 rate_hz = 1;
+}
+
+message Telemetry {
+  google.protobuf.Timestamp timestamp = 1;
+  repeated double joint_positions     = 2;  // rad, one per joint
+  repeated double joint_velocities    = 3;  // rad/s, one per joint
+  RobotState state                    = 4;
+}
+
+message JointTarget {
+  uint32 joint_index = 1;
+  double position    = 2;  // rad
+  double velocity    = 3;  // rad/s
+}
+
+message MotionCommand {
+  repeated JointTarget targets = 1;  // one per joint
+}
+
+// Single-robot control surface: identity, telemetry stream, and live motion.
+service RobotService {
+  // Static identity plus current state. Unary because the answer is a single
+  // snapshot; callers typically invoke this once per session.
+  rpc GetRobotInfo(GetRobotInfoRequest) returns (GetRobotInfoResponse);
+
+  // Continuous state samples at the requested rate. Server-streaming because
+  // the client subscribes once and the robot pushes indefinitely; there is no
+  // per-sample request.
+  rpc StreamTelemetry(StreamTelemetryRequest) returns (stream Telemetry);
+
+  // Continuous motion commands with concurrent state feedback. Bidirectional
+  // because commands and state flow independently: commands are last-write-wins
+  // set-points, not a queued sequence.
+  rpc LiveControl(stream MotionCommand) returns (stream Telemetry);
+}
