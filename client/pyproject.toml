@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robot-client"
+version = "0.1.0"
+description = "Python client for the robot.v1 gRPC service."
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.60",
+    "protobuf>=4.25",
+]
+
+[project.optional-dependencies]
+dev = [
+    "grpcio-tools>=1.60",
+    "pytest",
+]
+
+[project.scripts]
+robot-client = "robot_client.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["robot_client*"]
