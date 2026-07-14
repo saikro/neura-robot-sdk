@@ -58,7 +58,8 @@ Server (C++, from `server/`):
 ```bash
 cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 cmake --build build -j
-./build/src/app/robot_server           # listens on :50051
+./build/src/app/robot_server                       # listens on :50051
+ctest --test-dir build --output-on-failure         # GoogleTest suite (model + in-process gRPC)
 ```
 
 Client (Python, from `client/`):
@@ -68,8 +69,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'                # protos regenerate automatically
 python -m robot_client info            # unary
-python -m robot_client telemetry       # server-streaming (once server implements it)
-python -m robot_client control         # bidi        (once server implements it)
+python -m robot_client telemetry       # server-streaming
+python -m robot_client control         # bidi
 pytest tests/                          # unit tests
 ```
 
