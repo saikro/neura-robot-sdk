@@ -11,7 +11,8 @@ namespace {
 
 // 100 Hz internal simulation. Faster than any client is likely to sample; keeps
 // the observable state smooth without burning CPU.
-constexpr auto kTickPeriod       = std::chrono::milliseconds(10);
+constexpr auto kTickPeriod = std::chrono::milliseconds(10);
+
 // Applied when a command omits a velocity (velocity == 0) but requests motion.
 constexpr double kDefaultSpeedLimit = 1.0;   // rad/s
 constexpr double kVelocityDeadband  = 1e-6;  // treat |v| below this as at-rest
@@ -26,13 +27,10 @@ RobotModel::RobotModel(RobotConfig config)
       velocities_rad_per_s_(config_.NumJoints(), 0.0),
       target_positions_rad_(config_.NumJoints(), 0.0),
       target_velocities_rad_per_s_(config_.NumJoints(), 0.0) {
-  ticker_ = std::thread(&RobotModel::RunTicker, this);
+  ticker_ = std::jthread([this](std::stop_token stop) { RunTicker(std::move(stop)); });
 }
 
-RobotModel::~RobotModel() {
-  stop_.store(true, std::memory_order_release);
-  if (ticker_.joinable()) ticker_.join();
-}
+RobotModel::~RobotModel() = default;
 
 const std::string& RobotModel::SerialNumber() const noexcept {
   return config_.SerialNumber();
@@ -76,9 +74,9 @@ void RobotModel::ForceError() {
   std::fill(velocities_rad_per_s_.begin(), velocities_rad_per_s_.end(), 0.0);
 }
 
-void RobotModel::RunTicker() {
+void RobotModel::RunTicker(std::stop_token stop) {
   auto next = std::chrono::steady_clock::now();
-  while (!stop_.load(std::memory_order_acquire)) {
+  while (!stop.stop_requested()) {
     next += kTickPeriod;
     std::this_thread::sleep_until(next);
     Step(kTickPeriod);

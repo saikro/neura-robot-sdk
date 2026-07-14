@@ -1,11 +1,11 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <shared_mutex>
+#include <stop_token>
 #include <string>
 #include <thread>
 #include <vector>
@@ -59,7 +59,7 @@ class RobotModel {
   void ForceError();
 
  private:
-  void RunTicker();
+  void RunTicker(std::stop_token stop);
   void Step(std::chrono::duration<double> dt);
 
   RobotConfig config_;
@@ -71,8 +71,7 @@ class RobotModel {
   std::vector<double> target_velocities_rad_per_s_;
   RobotMode mode_ = RobotMode::IDLE;
 
-  std::atomic<bool> stop_{false};
-  std::thread ticker_;
+  std::jthread ticker_;
 };
 
 }  // namespace robot::domain
