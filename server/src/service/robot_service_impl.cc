@@ -29,6 +29,32 @@ grpc::Status RobotServiceImpl::GetRobotInfo(
   return grpc::Status::OK;
 }
 
+grpc::Status RobotServiceImpl::LiveControl(
+    grpc::ServerContext* context,
+    grpc::ServerReaderWriter<robot::v1::Telemetry, robot::v1::MotionCommand>* stream) {
+  constexpr auto kControlPeriod = std::chrono::milliseconds(50);
+
+  std::jthread writer([&](std::stop_token stop) {
+    while (!stop.stop_requested() && !context->IsCancelled()) {
+      if (!stream->Write(ToProto(model_.Read()))) break;
+      std::this_thread::sleep_for(kControlPeriod);
+    }
+  });
+
+  robot::v1::MotionCommand cmd;
+  while (stream->Read(&cmd)) {
+    switch (model_.ApplyCommand(FromProto(cmd))) {
+      case robot::domain::RobotModel::ApplyResult::OK:
+        break;
+      case robot::domain::RobotModel::ApplyResult::INVALID_JOINT_INDEX:
+        return {grpc::StatusCode::INVALID_ARGUMENT, "joint_index out of range"};
+      case robot::domain::RobotModel::ApplyResult::ROBOT_IN_ERROR:
+        return {grpc::StatusCode::FAILED_PRECONDITION, "robot is in ERROR state"};
+    }
+  }
+  return grpc::Status::OK;
+}
+
 grpc::Status RobotServiceImpl::StreamTelemetry(
     grpc::ServerContext* context,
     const robot::v1::StreamTelemetryRequest* request,

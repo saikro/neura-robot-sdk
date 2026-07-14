@@ -20,6 +20,11 @@ class RobotServiceImpl final : public robot::v1::RobotService::Service {
                                const robot::v1::StreamTelemetryRequest* request,
                                grpc::ServerWriter<robot::v1::Telemetry>* writer) override;
 
+  grpc::Status LiveControl(
+      grpc::ServerContext* context,
+      grpc::ServerReaderWriter<robot::v1::Telemetry, robot::v1::MotionCommand>* stream)
+      override;
+
  private:
   robot::domain::RobotModel& model_;
 };

@@ -32,4 +32,17 @@ robot::v1::Telemetry ToProto(const robot::domain::RobotModel::Snapshot& snapshot
   return telemetry;
 }
 
+robot::domain::MotionCommand FromProto(const robot::v1::MotionCommand& cmd) {
+  robot::domain::MotionCommand result;
+  result.targets.reserve(cmd.targets_size());
+  for (const auto& t : cmd.targets()) {
+    result.targets.push_back(robot::domain::JointTarget{
+        .joint_index        = t.joint_index(),
+        .position_rad       = t.position(),
+        .velocity_rad_per_s = t.velocity(),
+    });
+  }
+  return result;
+}
+
 }  // namespace robot::service
