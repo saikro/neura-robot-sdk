@@ -33,6 +33,8 @@ class RobotClient:
             self._stub = None
 
     def get_info(self) -> robot_pb2.RobotInfo:
+        # TODO: expose an SDK-owned type instead of the generated proto message —
+        # the facade should hide the wire contract, not leak it to consumers.
         assert self._stub is not None, "RobotClient must be used as a context manager"
         try:
             response = self._stub.GetRobotInfo(

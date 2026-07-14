@@ -34,7 +34,9 @@ class LiveControlSession:
             raise self._error
         if self._closed:
             raise RuntimeError("LiveControlSession is closed")
-        # Client-side last-write-wins: drop any queued stale command first.
+        # Last-write-wins: a stale motion command is worse than none, so a superseded
+        # command is dropped rather than queued. Discrete action sequences would need
+        # the opposite policy — see README.
         try:
             self._send_q.get_nowait()
         except queue.Empty:
