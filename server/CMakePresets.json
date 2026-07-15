@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "displayName": "vcpkg (local development)",
+      "description": "Resolve gRPC/protobuf via the vcpkg toolchain. Requires $VCPKG_ROOT.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    }
+  ]
+}

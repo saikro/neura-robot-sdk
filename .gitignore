@@ -52,6 +52,9 @@ Makefile
 install_manifest.txt
 compile_commands.json
 
+# CMake presets — machine-specific overrides only
+CMakeUserPresets.json
+
 # Temporary files
 *.tmp
 *.log

@@ -56,11 +56,15 @@ Robotics setting: one robotic arm exposed over gRPC — identity, joint telemetr
 Server (C++, from `server/`):
 
 ```bash
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+cmake --preset vcpkg
 cmake --build build -j
 ./build/src/app/robot_server                       # listens on :50051
 ctest --test-dir build --output-on-failure         # GoogleTest suite (model + in-process gRPC)
 ```
+
+The `vcpkg` preset expects `$VCPKG_ROOT` to point at a vcpkg checkout; it
+resolves gRPC/protobuf via the vcpkg toolchain file. See
+`server/CMakePresets.json` for the exact contents.
 
 Client (Python, from `client/`):
 
@@ -103,6 +107,7 @@ Deliberately out of scope here; noted as what a real system would need:
 - Retry / reconnect on `UNAVAILABLE` with backoff
 - Async client variant (`grpc.aio`) alongside the synchronous one
 - Client packaging & versioning of the SDK (currently editable install only)
+- First Docker build compiles gRPC via vcpkg (~30–40 min, one-time; cached afterwards). TODO: substitute a base image with gRPC prebuilt to cut this to a few minutes.
 
 ## Tech stack
 
