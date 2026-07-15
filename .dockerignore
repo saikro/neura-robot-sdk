@@ -1,0 +1,32 @@
+.git
+.gitignore
+
+# CMake / build (patterns need **/ to match at any depth in .dockerignore)
+**/build/
+**/Build/
+**/build-*/
+**/CMakeCache.txt
+**/CMakeFiles/
+**/CMakeUserPresets.json
+**/cmake_install.cmake
+**/compile_commands.json
+
+# vcpkg
+**/vcpkg_installed/
+
+# Generated protobuf / gRPC sources — regenerated inside the image
+**/*.pb.*
+**/*.grpc.pb.*
+**/*_pb2*.py
+client/robot_client/generated/
+
+# Python
+**/__pycache__/
+**/*.egg-info/
+**/.pytest_cache/
+client/.venv/
+
+# Docs / Claude tooling
+.claude/
+claude_instructions/
+CLAUDE.md

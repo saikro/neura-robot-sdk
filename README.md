@@ -49,7 +49,18 @@ Robotics setting: one robotic arm exposed over gRPC — identity, joint telemetr
 
 ## Running it
 
-<!-- TODO: docker compose up --build once compose is in place — will bring up the server and run the client against it. -->
+### With Docker Compose
+
+```bash
+docker compose up -d server
+docker compose run --rm client info
+docker compose run --rm client telemetry --rate 10 --duration 5
+docker compose run --rm client control --duration 5
+docker compose down
+```
+
+> First build compiles gRPC via vcpkg (~30–40 min, one-time; cached
+> afterwards). See *Production TODOs* for the prebuilt-base-image plan.
 
 ### Building / running manually
 
@@ -108,6 +119,7 @@ Deliberately out of scope here; noted as what a real system would need:
 - Async client variant (`grpc.aio`) alongside the synchronous one
 - Client packaging & versioning of the SDK (currently editable install only)
 - First Docker build compiles gRPC via vcpkg (~30–40 min, one-time; cached afterwards). TODO: substitute a base image with gRPC prebuilt to cut this to a few minutes.
+- Pin vcpkg to a release tag/commit in `server/Dockerfile` (currently tracks master).
 
 ## Tech stack
 
