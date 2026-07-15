@@ -52,11 +52,11 @@ Robotics setting: one robotic arm exposed over gRPC — identity, joint telemetr
 ### With Docker Compose
 
 ```bash
-docker compose up -d server
-docker compose run --rm client info
-docker compose run --rm client telemetry --rate 10 --duration 5
-docker compose run --rm client control --duration 5
-docker compose down
+docker compose up -d server   # build image, start server on :50051 (first build is slow — see note)
+docker compose run --rm client info   # unary: robot identity + state
+docker compose run --rm client telemetry --rate 10 --duration 5   # server-streaming at 10 Hz for 5 s
+docker compose run --rm client control --duration 5   # bidi: stream joint targets, telemetry back
+docker compose down   # stop server, remove containers + network
 ```
 
 > First build compiles gRPC via vcpkg (~30–40 min, one-time; cached
@@ -89,37 +89,43 @@ python -m robot_client control         # bidi
 pytest tests/                          # unit tests
 ```
 
+`control` drives joint 0 along a sine wave as a minimal teleop demo; the
+other joints stay idle. It exercises the bidirectional path — continuously
+streaming targets while telemetry streams back — without needing a full
+multi-joint trajectory.
+
 Override the target with `--target host:port` or `ROBOT_TARGET=host:port`.
 
 ## Design decisions
 
-<!-- Keep each to 1–2 sentences. This section is where "reasoning under ambiguity" is graded. -->
+- **Contract as internal transport; the SDK facade is a named boundary, not built.** Application developers should get a per-language facade, not raw gRPC. `RobotClient` here is transport-shaped: it returns proto messages unchanged and only adds channel lifecycle, per-RPC deadlines, and human-readable error text (`UNAVAILABLE` → "robot not reachable", `DEADLINE_EXCEEDED` → "timed out"). A real SDK would map proto messages to SDK-owned types so the wire contract can evolve without breaking consumers — deferred here to keep the example minimal.
 
-- **Contract as internal transport, facade left as a boundary.** Application developers should get a per-language SDK facade, not raw gRPC; naming that boundary keeps the example honest about what a production SDK still owes on top of this transport.
-- **Code generation at build time, generated sources not committed.** Keeps the diff to the contract plus hand-written code; `.gitignore` excludes generated `*.pb.*` / `*_pb2*.py`. Both sides regenerate — cmake on the server, a setuptools `build_py` hook on the client — so `pip install` and `cmake --build` are each the only step.
-- **Error model: gRPC status codes, not an in-band `status` field.** `INVALID_ARGUMENT` for bad requests, `FAILED_PRECONDITION` for state violations, cancellation as `OK`. Lets standard gRPC middleware (deadlines, retries, tracing) react without a parallel schema.
-- **Three RPCs cover three of the four gRPC modes.** Client-streaming is left as a TODO (see below).
-- **Client is thin — transport-shaped, not a domain facade.** `RobotClient` returns proto messages unchanged; only channel lifecycle, per-RPC deadlines, and human error text (`UNAVAILABLE` → "robot not reachable", `DEADLINE_EXCEEDED` → "timed out") are added. `LiveControlSession` exists solely to sidestep the grpcio bidi generator/thread deadlock, not to model a domain.
-- **Client stays synchronous** to match the server; `grpc.aio` is deferred (see Production TODOs).
-- The facade returns generated proto messages. In a real SDK it would map them to SDK-owned types so the wire contract can evolve without breaking consumers — not done here to keep the example minimal.
-- **`LiveControl` commands are last-write-wins, not queued.** They represent the latest desired motion, so a superseded command is dropped on both client and server — a stale motion target is worse than none. Discrete action sequences (pick → move → place) have the opposite requirement: steps must not be dropped, and would need a separate RPC with backpressure or per-step acknowledgement instead of a single-slot buffer.
+- **Code generation at build time, generated sources not committed.** `.gitignore` excludes generated `*.pb.*` / `*_pb2*.py`; both sides regenerate from the single contract — cmake on the server, a setuptools `build_py` hook on the client — so `cmake --build` and `pip install` are each the only step needed.
+
+- **Error model: gRPC status codes end-to-end, not a custom error field.** The server returns `INVALID_ARGUMENT` for bad requests and `FAILED_PRECONDITION` for actions taken while in an error state; the client maps these status codes to readable messages. Using standard gRPC status means tooling like deadlines, retries, and tracing works out of the box.
+
+- **`LiveControl` commands are last-write-wins, not queued.** They represent the latest desired motion, so a superseded command is dropped on both client and server — a stale motion target is worse than none. Discrete action sequences (pick → move → place) have the opposite requirement — steps must not be dropped — and would need a separate RPC with backpressure or per-step acknowledgement instead of a single-slot buffer.
+
+- **`LiveControlSession` isolates the grpcio bidi generator/thread ceremony; the client stays synchronous** to match the synchronous server. An async variant (`grpc.aio`) is deferred (see Production TODOs).
 
 ## Production TODOs
 
 Deliberately out of scope here; noted as what a real system would need:
 
-- Client-streaming RPC (e.g. trajectory upload)
-- Per-language SDK facade over this transport
+**Production features (out of scope):**
+- Client-streaming RPC for batch upload of an ordered waypoint sequence — executed in order with no dropped points, distinct from `LiveControl`, which streams latest-only real-time targets
+- Per-language SDK facade over this transport, mapping proto to SDK-owned types
 - Transport security: TLS / mTLS for fleet service-to-service auth
 - Auth: per-call credentials (token in metadata)
-- Backpressure / flow control on streams
 - Reconnect strategy, health checks, observability (logging/metrics/tracing interceptors)
-- Structured error mapping in the client — `grpc.StatusCode` → typed exceptions rather than one `RobotClientError`
+- Structured client error mapping: `grpc.StatusCode` → typed exceptions rather than one `RobotClientError`
 - Retry / reconnect on `UNAVAILABLE` with backoff
 - Async client variant (`grpc.aio`) alongside the synchronous one
 - Client packaging & versioning of the SDK (currently editable install only)
-- First Docker build compiles gRPC via vcpkg (~30–40 min, one-time; cached afterwards). TODO: substitute a base image with gRPC prebuilt to cut this to a few minutes.
-- Pin vcpkg to a release tag/commit in `server/Dockerfile` (currently tracks master).
+
+**Build / repo hardening:**
+- Substitute a base image with gRPC prebuilt to cut the first Docker build from ~30–40 min to a few minutes
+- Pin vcpkg to a release tag/commit in `server/Dockerfile` (currently tracks master)
 
 ## Tech stack
 
